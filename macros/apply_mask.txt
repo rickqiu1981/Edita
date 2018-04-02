@@ -1,0 +1,112 @@
+//Make a list of open images
+function getOpenima(id){
+openim=newArray(nImages);
+if(nImages==0) exit("no image open");
+for(i=1;i<=nImages;i++) { 
+	selectImage(i);
+          if(id==true) openim[i-1]=getImageID();
+          else openim[i-1]=getTitle;
+      } 
+return openim;
+}
+
+
+
+//Close windows except those spécified
+function closeWindowexept(openim,exept){
+ima=getOpenima(true);
+for(i=0;i<ima.length;i++){
+	closed=1;
+	for(j=0;j<exept.length;j++){
+			if(ima[i]==exept[j]) closed=0;
+		}
+	for(k=0;k<openim.length;k++){
+			if(ima[i]==openim[k]) closed=0;
+		}
+	if(closed==1){
+		selectImage(ima[i]);
+		close();
+		}
+	}
+}
+
+
+//Create a dialogue box to choose the images
+function getChoiceim(){
+list=getOpenima(false);
+Dialog.create("Images selection");
+Dialog.addChoice("Mask (8-bit binary image, backgroung=black)",list);
+Dialog.addChoice("Image to process (16 bit)",list);
+Dialog.show;
+cmask=Dialog.getChoice(); 
+selectImage(cmask);
+imask=getImageID();
+cima=Dialog.getChoice(); 
+selectImage(cima);
+iima=getImageID();
+choice=newArray(imask,iima);
+return choice;
+}
+
+
+//Evaluate type of the image to be treated 
+function getType(choice){
+type=newArray(4);
+selectImage(choice[0]);
+type[0]=bitDepth();
+type[2]=nSlices();
+selectImage(choice[1]);
+type[1]=bitDepth();
+type[3]=nSlices;
+return type;
+}
+
+
+//Show an error message if image to be treated are not in te corrected type
+function showErrorchoice(type){
+if(type[0]!=8){
+	exit("mask (black background) image must be 8-bit type"); 
+	}
+if(type[1]!=16){
+	exit("image to be treated must be 16-bit type"); 
+	}
+if(type[2]!=type[3]){
+	exit("image and mask must have the same number of slices");
+	}
+}
+
+
+//Apply by subtraction the mask to the image
+function applyMask(mask,im,openim){
+selectImage(mask);
+run("Duplicate...", "title=inter duplicate");
+inter=getImageID();
+run("16-bit");
+run("Divide...", "stack value=255");
+imageCalculator("Multiply create stack", inter,im);
+rename("result");
+res=getImageID();
+exept=newArray(1); exept[0]=res;
+closeWindowexept(openim, exept);
+return res;
+}
+
+
+macro "apply mask"{
+openim=getOpenima(true);
+choice=getChoiceim();
+showErrorchoice(getType(choice));
+applyMask(choice[0],choice[1],openim);
+run("Tile");
+
+}
+
+
+
+
+macro"help"{
+message1= "Use this macro to create a image in which the background is set at zero whereas the particles of interest, that are specified by a mask, keep their original intensity. ";
+message2= "Image informations:\n \t-Image must be 16-bit type \n \t-Mask is a binary black background image to specify pixels that belong to the particles of interest";
+message=message1+"\n"+message2;
+showMessage("help",message);
+}
